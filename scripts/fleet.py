@@ -211,7 +211,7 @@ def rotate(k: int = 3, min_closed: int = 10) -> None:
 def leaderboard() -> tuple[list, float]:
     now = prices()
     bench = json.loads((RUNS / "benchmark.json").read_text())
-    bh = sum(now[p] / bench["prices"][p] - 1 for p in now) / len(now) * 100
+    bh = sum(now[p] / bench["prices"][p] - 1 for p in bench["prices"]) / len(bench["prices"]) * 100  # original 14-coin basket
     rows = []
     for name in (n for n in bots() if (RUNS / n).exists()):
         db = RUNS / name / "trades.sqlite"
