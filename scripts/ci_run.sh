@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# One relay leg: restore state, run the fleet for ~5h40m, saving state to the `state` branch every 15 min.
+# One relay leg: restore state, run the fleet for ~5h40m, saving state to the `state` branch every 5 min.
 set -uo pipefail
 cd "$(dirname "$0")/.."
 ROOT=$PWD
@@ -24,6 +24,7 @@ save() {
   for r in runs/*/retired; do [ -f "$r" ] && { mkdir -p "$s/$(dirname "$r")"; touch "$s/$r"; }; done
   { echo "# Fleet status"; echo "updated $(date -u '+%Y-%m-%d %H:%M UTC')"; echo '```'
     .venv/bin/python scripts/fleet.py status 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | head -n 120; echo '```'; } > $s/STATUS.md
+  RUNS_DIR=$s/runs .venv/bin/python scripts/export_json.py $s/data.json 2>&1 | tail -n 3
   ( cd $s && git init -q -b state && git config user.email ci@example.com && git config user.name fleet-ci \
     && git add -A && git commit -q -m "state $(date -u +%FT%TZ)" && git push -q -f "$REPO_URL" state ) || echo "state push failed"
 }
@@ -32,7 +33,7 @@ restore
 .venv/bin/python scripts/fleet.py start all
 echo "started: $(pgrep -fc 'freqtrade trade') bots"
 while [ "$(date +%s)" -lt "$END" ]; do
-  sleep 900
+  sleep 300
   # restart anything that died (idempotent)
   .venv/bin/python scripts/fleet.py start all >/dev/null 2>&1
   save
