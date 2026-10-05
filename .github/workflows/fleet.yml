@@ -1,0 +1,34 @@
+name: fleet
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/30 * * * *"   # safety net: restarts the chain if it ever breaks
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: fleet
+  cancel-in-progress: false
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 358
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Queue the next leg
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run fleet.yml --ref "${{ github.ref_name }}"
+      - name: Install
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq sqlite3 >/dev/null
+          python -m venv .venv
+          .venv/bin/pip install -q -r requirements.txt
+      - name: Run fleet
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: scripts/ci_run.sh

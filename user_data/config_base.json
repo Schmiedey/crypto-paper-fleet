@@ -1,0 +1,27 @@
+{
+    "$comment": "Shared paper-trading config. Every bot gets $10k of fake USD on live Kraken prices, routed through scripts/kraken_proxy.py.",
+    "dry_run": true,
+    "dry_run_wallet": 10000,
+    "trading_mode": "spot",
+    "stake_currency": "USD",
+    "stake_amount": "unlimited",
+    "tradable_balance_ratio": 0.99,
+    "max_open_trades": 5,
+    "cancel_open_orders_on_exit": false,
+    "initial_state": "running",
+    "unfilledtimeout": {"entry": 10, "exit": 10, "exit_timeout_count": 0, "unit": "minutes"},
+    "entry_pricing": {"price_side": "other", "use_order_book": true, "order_book_top": 1, "price_last_balance": 0.0,
+                      "check_depth_of_market": {"enabled": false, "bids_to_ask_delta": 1}},
+    "exit_pricing": {"price_side": "other", "use_order_book": true, "order_book_top": 1},
+    "exchange": {
+        "name": "kraken",
+        "key": "",
+        "secret": "",
+        "ccxt_config": {"urls": {"api": {"public": "http://127.0.0.1:8899"}}},
+        "pair_whitelist": ["BTC/USD", "ETH/USD", "SOL/USD", "XRP/USD", "DOGE/USD", "ADA/USD", "AVAX/USD",
+                           "LINK/USD", "BNB/USD", "LTC/USD", "SHIB/USD", "PEPE/USD", "BONK/USD", "WIF/USD"],
+        "pair_blacklist": []
+    },
+    "pairlists": [{"method": "StaticPairList"}],
+    "internals": {"process_throttle_secs": 5}
+}

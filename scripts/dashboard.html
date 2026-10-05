@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paper Trading Desk</title>
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7;
+  --surface-1: #fcfcfb;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #898781;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --border: rgba(11, 11, 11, 0.10);
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --benchmark: #898781;
+  --up: #006300;
+  --down: #d03b3b;
+  --good: #0ca30c;
+  --critical: #d03b3b;
+  --wash: rgba(11, 11, 11, 0.04);
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --page: #0d0d0d;
+    --surface-1: #1a1a19;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted: #898781;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --border: rgba(255, 255, 255, 0.10);
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --up: #0ca30c;
+    --down: #e66767;
+    --wash: rgba(255, 255, 255, 0.05);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d;
+  --surface-1: #1a1a19;
+  --text-primary: #ffffff;
+  --text-secondary: #c3c2b7;
+  --text-muted: #898781;
+  --grid: #2c2c2a;
+  --axis: #383835;
+  --border: rgba(255, 255, 255, 0.10);
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --up: #0ca30c;
+  --down: #e66767;
+  --wash: rgba(255, 255, 255, 0.05);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--page); color: var(--text-primary);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.wrap { max-width: 1280px; margin: 0 auto; padding: 24px 16px 48px; }
+header { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; justify-content: space-between; margin-bottom: 20px; }
+h1 { font-size: 22px; font-weight: 650; margin: 0; letter-spacing: -0.01em; }
+.sub { color: var(--text-secondary); margin-top: 2px; }
+.pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px;
+  background: var(--surface-1); box-shadow: inset 0 0 0 1px var(--border); color: var(--text-secondary); font-size: 13px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
+.dot.ok { background: var(--good); } .dot.bad { background: var(--critical); }
+.card { background: var(--surface-1); border-radius: 12px; box-shadow: inset 0 0 0 1px var(--border); padding: 18px; min-width: 0; }
+.card h2 { font-size: 15px; font-weight: 600; margin: 0; }
+.card .note { color: var(--text-muted); font-size: 12.5px; margin-top: 2px; }
+.card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+.kpis { display: grid; grid-template-columns: minmax(260px, 1.4fr) repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 12px; }
+.hero .label, .tile .label { color: var(--text-secondary); font-size: 13px; }
+.hero .value { white-space: nowrap; font-size: 52px; font-weight: 650; line-height: 1.05; margin: 6px 0 4px; letter-spacing: -0.02em; }
+.hero .detail { color: var(--text-muted); font-size: 12.5px; }
+.tile .value { font-size: clamp(20px, 2.2vw, 26px); font-weight: 600; margin-top: 6px; white-space: nowrap; }
+.tile .detail { color: var(--text-muted); font-size: 12.5px; margin-top: 2px; }
+.grid2 { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 12px; margin-bottom: 12px; }
+.stack { display: grid; gap: 12px; }
+.kalshi-body { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 900px) { .kalshi-body { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 900px) { .grid2 { grid-template-columns: minmax(0, 1fr); } .kpis { grid-template-columns: 1fr 1fr; } .hero { grid-column: 1 / -1; } }
+.up { color: var(--up); } .down { color: var(--down); } .flat { color: var(--text-secondary); }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; color: var(--text-secondary); font-size: 12.5px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.key { width: 14px; height: 2px; border-radius: 1px; display: inline-block; }
+.chart { position: relative; }
+.chart svg { display: block; width: 100%; }
+.tooltip { position: absolute; pointer-events: none; background: var(--surface-1); box-shadow: 0 0 0 1px var(--border), 0 6px 20px rgba(0,0,0,.12);
+  border-radius: 8px; padding: 8px 10px; font-size: 12.5px; min-width: 150px; display: none; z-index: 2; }
+.tooltip .t { color: var(--text-muted); margin-bottom: 4px; }
+.tooltip .row { display: flex; align-items: center; gap: 8px; }
+.tooltip .row b { font-variant-numeric: tabular-nums; min-width: 58px; }
+.tooltip .row span { color: var(--text-secondary); }
+.empty { color: var(--text-muted); text-align: center; padding: 70px 12px; }
+.btn { background: none; border: 0; color: var(--text-secondary); font: inherit; font-size: 12.5px; cursor: pointer; padding: 4px 8px; border-radius: 6px; }
+.btn:hover { background: var(--wash); color: var(--text-primary); }
+.scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; font-weight: 500; color: var(--text-muted); font-size: 12px; padding: 6px 8px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+th.sortable { cursor: pointer; user-select: none; } th.sortable:hover { color: var(--text-primary); }
+td { padding: 7px 8px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.name { font-weight: 500; }
+.tag { font-size: 11px; color: var(--text-muted); margin-left: 6px; }
+.status { display: inline-flex; align-items: center; gap: 6px; color: var(--text-secondary); font-size: 12.5px; }
+.feed { list-style: none; margin: 0; padding: 0; max-height: 400px; overflow-y: auto; }
+.feed li { display: grid; grid-template-columns: 58px 1fr; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--grid); font-size: 13px; }
+.feed li:last-child { border-bottom: 0; }
+.feed .when { color: var(--text-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.feed .who { color: var(--text-muted); font-size: 12px; }
+.holdings { color: var(--text-secondary); font-size: 12.5px; white-space: normal; min-width: 180px; }
+.section-title { font-size: 13px; color: var(--text-muted); margin: 18px 0 8px; font-weight: 500; }
+footer { color: var(--text-muted); font-size: 12.5px; margin-top: 18px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Paper Trading Desk</h1>
+      <div class="sub">Live Kraken &amp; Kalshi prices · simulated money · refreshes every 30 seconds</div>
+    </div>
+    <div class="pill" id="health"><span class="dot"></span><span>Connecting…</span></div>
+  </header>
+
+  <section class="kpis">
+    <div class="card hero">
+      <div class="label">Best combination · 30% trend + 70% dip-buyers</div>
+      <div class="value" id="k-combo">—</div>
+      <div class="detail" id="k-combo-d">Backtest 2023–26: +25%/yr, worst drop −10%</div>
+    </div>
+    <div class="card tile"><div class="label">Dip-buyer basket</div><div class="value" id="k-dip">—</div><div class="detail" id="k-dip-d"></div></div>
+    <div class="card tile"><div class="label">Trend blend</div><div class="value" id="k-trend">—</div><div class="detail">momentum + breakout + BTC trend</div></div>
+    <div class="card tile"><div class="label">BTC buy &amp; hold</div><div class="value" id="k-btc">—</div><div class="detail">benchmark, same start</div></div>
+    <div class="card tile"><div class="label">Kalshi P&amp;L</div><div class="value" id="k-kalshi">—</div><div class="detail" id="k-kalshi-d"></div></div>
+  </section>
+
+  <section class="grid2">
+    <figure class="card" style="margin:0">
+      <div class="card-head">
+        <div><h2>Performance</h2><div class="note">Return since each strategy started, sampled every 5 minutes</div></div>
+        <button class="btn" id="toggle-table" aria-pressed="false">Show table</button>
+      </div>
+      <div class="legend" id="legend"></div>
+      <div class="chart" id="chart"></div>
+      <div class="scroll" id="chart-table" hidden></div>
+    </figure>
+    <div class="card">
+      <div class="card-head"><div><h2>Live activity</h2><div class="note">Latest paper trades across all bots</div></div></div>
+      <ul class="feed" id="feed"></ul>
+    </div>
+  </section>
+
+  <section class="card" style="margin-bottom:12px">
+    <div class="card-head">
+      <div><h2>Crypto bots</h2><div class="note" id="bots-note"></div></div>
+    </div>
+    <div class="scroll"><table id="bots"></table></div>
+  </section>
+
+  <section class="stack">
+    <div class="card">
+      <div class="card-head"><div><h2>Trend portfolios</h2><div class="note" id="port-note">Rebalance daily after the 00:00 UTC close</div></div></div>
+      <div class="scroll"><table id="port"></table></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div><h2>Kalshi crypto contracts</h2><div class="note">10 pricing variants, $1,000 each · replay said no edge</div></div></div>
+      <div class="kalshi-body">
+        <div class="scroll"><table id="kalshi"></table></div>
+        <div>
+          <div class="section-title" id="brier-title" style="margin-top:0">Forecast accuracy (Brier score, lower is better)</div>
+          <div class="chart" id="brier"></div>
+          <div class="note" id="brier-verdict" style="margin-top:8px"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>Paper trading only — no exchange account or API keys are connected. Data never leaves this Mac.</footer>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const SVGNS = "http://www.w3.org/2000/svg";
+const NICE = {
+  btc_trend_sma50: "BTC trend (50-day)", btc_voltarget_trend: "BTC trend, volatility-sized",
+  donchian_20_10_top10: "Breakout 20/10, top 10", momentum7_top5: "Momentum, top 5",
+  momentum7_top3: "Momentum, top 3", tsmom_voltarget: "Trend per coin, vol-sized",
+  blend_mom_don_btc: "Trend blend (used in combo)",
+};
+const SERIES = [
+  { key: "combo", label: "Combo 30/70", color: "--series-1" },
+  { key: "dip", label: "Dip-buyers", color: "--series-2" },
+  { key: "trend", label: "Trend blend", color: "--series-3" },
+  { key: "btc", label: "BTC", color: "--benchmark" },
+];
+let state = null, botSort = { key: "ret", dir: -1 };
+
+function el(tag, attrs = {}, text) {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  if (text !== undefined) n.textContent = text;
+  return n;
+}
+function svg(tag, attrs = {}) {
+  const n = document.createElementNS(SVGNS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  return n;
+}
+function pct(x, d = 2) { return x == null || isNaN(x) ? "—" : (x > 0 ? "+" : x < 0 ? "−" : "") + Math.abs(x).toFixed(d) + "%"; }
+function usd(x) { return x == null ? "—" : (x < 0 ? "−$" : "$") + Math.abs(x).toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: 2 }); }
+function dir(x) { return x == null || Math.abs(x) < 0.005 ? "flat" : x > 0 ? "up" : "down"; }
+function setVal(id, x, fmt = pct) { const n = $(id); n.textContent = fmt(x); n.className = "value " + dir(x); }
+function ago(ts) {
+  const s = (Date.now() - new Date(ts.replace(" ", "T") + (/[zZ]|[+-]\d\d:?\d\d$/.test(ts) ? "" : "Z")).getTime()) / 1000;
+  if (s < 60) return "now"; if (s < 3600) return Math.floor(s / 60) + "m ago";
+  if (s < 86400) return Math.floor(s / 3600) + "h ago"; return Math.floor(s / 86400) + "d ago";
+}
+
+function renderHeadline() {
+  const h = state.headline;
+  setVal("k-combo", h.combo); setVal("k-dip", h.dip); setVal("k-trend", h.trend); setVal("k-btc", h.btc);
+  setVal("k-kalshi", h.kalshi_pnl, usd);
+  const dips = state.bots.filter((b) => b.group === "dip");
+  $("k-dip-d").textContent = `${dips.length} bots · ${h.open_positions} open positions`;
+  $("k-kalshi-d").textContent = `${state.kalshi.variants.reduce((a, v) => a + v.settled, 0).toLocaleString()} contracts settled`;
+  const p = state.fleet.proxy;
+  const health = $("health");
+  health.replaceChildren(el("span", { class: "dot ok" }),
+    el("span", {}, `${state.fleet.processes} processes running · ${p ? (100 * (1 - p.upstream / Math.max(p.requests, 1))).toFixed(0) + "% of requests served from cache" : "proxy offline"} · updated ${new Date(state.now).toLocaleTimeString()}`));
+}
+
+function renderLegend() {
+  const lg = $("legend"); lg.replaceChildren();
+  for (const s of SERIES) {
+    const item = el("span"); const k = el("span", { class: "key" }); k.style.background = css(s.color);
+    item.append(k, document.createTextNode(s.label)); lg.append(item);
+  }
+}
+
+function renderChart() {
+  const box = $("chart"); box.replaceChildren();
+  const hist = state.history || {};
+  const series = SERIES.map((s) => ({ ...s, pts: (hist[s.key] || []).map(([t, v]) => [new Date(t).getTime(), v]) })).filter((s) => s.pts.length);
+  const n = Math.max(0, ...series.map((s) => s.pts.length));
+  if (n < 2) { box.append(el("div", { class: "empty" }, "Collecting history — the chart fills in as 5-minute snapshots arrive.")); renderChartTable(series); return; }
+  const W = box.clientWidth || 700, H = 280, m = { l: 52, r: 118, t: 10, b: 28 };
+  const xs = series.flatMap((s) => s.pts.map((p) => p[0])), ys = series.flatMap((s) => s.pts.map((p) => p[1]));
+  const x0 = Math.min(...xs), x1 = Math.max(...xs);
+  let y0 = Math.min(0, ...ys), y1 = Math.max(0, ...ys); const pad = (y1 - y0) * 0.12 || 0.5; y0 -= pad; y1 += pad;
+  const X = (t) => m.l + (t - x0) / (x1 - x0 || 1) * (W - m.l - m.r);
+  const Y = (v) => m.t + (1 - (v - y0) / (y1 - y0)) * (H - m.t - m.b);
+  const root = svg("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Return over time for the combination, dip-buyers, trend blend and BTC" });
+  const step = niceStep((y1 - y0) / 4);
+  for (let v = Math.ceil(y0 / step) * step; v <= y1; v += step) {
+    const y = Y(v);
+    root.append(svg("line", { x1: m.l, x2: W - m.r, y1: y, y2: y, stroke: Math.abs(v) < 1e-9 ? css("--axis") : css("--grid"), "stroke-width": 1 }));
+    const t = svg("text", { x: m.l - 8, y: y + 4, "text-anchor": "end", fill: css("--text-muted"), "font-size": 11 }); t.textContent = pct(v, step < 0.1 ? 2 : 1); root.append(t);
+  }
+  const ticks = 5;
+  for (let i = 0; i <= ticks; i++) {
+    const t = x0 + (x1 - x0) * i / ticks, d = new Date(t);
+    const lab = svg("text", { x: X(t), y: H - 8, "text-anchor": i === 0 ? "start" : i === ticks ? "end" : "middle", fill: css("--text-muted"), "font-size": 11 });
+    lab.textContent = (x1 - x0) > 2 * 864e5 ? d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) : d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    root.append(lab);
+  }
+  const ends = [];
+  for (const s of series) {
+    const d = s.pts.map((p, i) => (i ? "L" : "M") + X(p[0]).toFixed(1) + "," + Y(p[1]).toFixed(1)).join("");
+    root.append(svg("path", { d, fill: "none", stroke: css(s.color), "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+    const last = s.pts[s.pts.length - 1];
+    root.append(svg("circle", { cx: X(last[0]), cy: Y(last[1]), r: 4, fill: css(s.color), stroke: css("--surface-1"), "stroke-width": 2 }));
+    ends.push({ y: Y(last[1]), x: X(last[0]), text: `${s.label} ${pct(last[1])}` });
+  }
+  ends.sort((a, b) => a.y - b.y);
+  const collide = ends.some((e, i) => i && e.y - ends[i - 1].y < 14);
+  if (!collide) for (const e of ends) {
+    const t = svg("text", { x: e.x + 9, y: e.y + 4, fill: css("--text-secondary"), "font-size": 11.5 }); t.textContent = e.text; root.append(t);
+  }
+  const cross = svg("line", { y1: m.t, y2: H - m.b, stroke: css("--axis"), "stroke-width": 1, visibility: "hidden" });
+  root.append(cross);
+  const hit = svg("rect", { x: m.l, y: m.t, width: W - m.l - m.r, height: H - m.t - m.b, fill: "transparent", tabindex: 0 });
+  root.append(hit);
+  box.append(root);
+  const tip = el("div", { class: "tooltip" }); box.append(tip);
+  const times = [...new Set(xs)].sort((a, b) => a - b);
+  const show = (t) => {
+    const ix = X(t); cross.setAttribute("x1", ix); cross.setAttribute("x2", ix); cross.setAttribute("visibility", "visible");
+    tip.replaceChildren(el("div", { class: "t" }, new Date(t).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })));
+    for (const s of series) {
+      const p = s.pts.reduce((best, q) => Math.abs(q[0] - t) < Math.abs(best[0] - t) ? q : best, s.pts[0]);
+      const row = el("div", { class: "row" }); const k = el("span", { class: "key" }); k.style.background = css(s.color);
+      row.append(k, el("b", {}, pct(p[1])), el("span", {}, s.label)); tip.append(row);
+    }
+    tip.style.display = "block";
+    const left = ix / W * box.clientWidth; tip.style.left = Math.min(left + 12, box.clientWidth - tip.offsetWidth - 4) + "px"; tip.style.top = "8px";
+  };
+  const nearest = (px) => { const t = x0 + (px - m.l) / (W - m.l - m.r) * (x1 - x0); return times.reduce((b, q) => Math.abs(q - t) < Math.abs(b - t) ? q : b, times[0]); };
+  hit.addEventListener("pointermove", (e) => { const r = root.getBoundingClientRect(); show(nearest((e.clientX - r.left) / r.width * W)); });
+  hit.addEventListener("pointerleave", () => { tip.style.display = "none"; cross.setAttribute("visibility", "hidden"); });
+  hit.addEventListener("focus", () => show(times[times.length - 1]));
+  hit.addEventListener("blur", () => { tip.style.display = "none"; cross.setAttribute("visibility", "hidden"); });
+  renderChartTable(series);
+}
+function niceStep(raw) { const p = Math.pow(10, Math.floor(Math.log10(raw || 1))); const f = raw / p; return (f < 1.5 ? 1 : f < 3.5 ? 2 : f < 7.5 ? 5 : 10) * p; }
+function renderChartTable(series) {
+  const t = el("table"); const hr = el("tr"); hr.append(el("th", {}, "Time"));
+  for (const s of series) hr.append(el("th", { class: "num" }, s.label));
+  t.append(hr);
+  const times = [...new Set(series.flatMap((s) => s.pts.map((p) => p[0])))].sort((a, b) => b - a).slice(0, 24);
+  for (const tm of times) {
+    const tr = el("tr"); tr.append(el("td", {}, new Date(tm).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })));
+    for (const s of series) { const p = s.pts.find((q) => q[0] === tm); tr.append(el("td", { class: "num " + dir(p && p[1]) }, p ? pct(p[1]) : "—")); }
+    t.append(tr);
+  }
+  $("chart-table").replaceChildren(t);
+}
+
+function renderFeed() {
+  const ul = $("feed"); ul.replaceChildren();
+  if (!state.events.length) { ul.append(el("li", { class: "empty" }, "No trades yet")); return; }
+  for (const e of state.events) {
+    const li = el("li"); li.append(el("span", { class: "when" }, ago(e.ts)));
+    const body = el("div"); const line = el("div");
+    line.append(document.createTextNode(e.what + " "));
+    const det = el("span", { class: e.pnl != null ? dir(e.pnl * 100) : "flat" }, e.detail); line.append(det);
+    body.append(line, el("div", { class: "who" }, (e.kind === "kalshi" ? "Kalshi · " : "") + e.who)); li.append(body); ul.append(li);
+  }
+}
+
+function renderBots() {
+  const cols = [["name", "Strategy"], ["running", "Status"], ["ret", "Return", 1], ["mkt", "Market since start", 1], ["vs_bh", "vs market", 1], ["closed", "Closed", 1], ["open", "Open", 1], ["win", "Win rate", 1]];
+  const t = $("bots"); t.replaceChildren();
+  const hr = el("tr");
+  for (const [k, label, num] of cols) {
+    const th = el("th", { class: "sortable" + (num ? " num" : ""), "aria-sort": botSort.key === k ? (botSort.dir > 0 ? "ascending" : "descending") : "none" }, label + (botSort.key === k ? (botSort.dir > 0 ? " ↑" : " ↓") : ""));
+    th.addEventListener("click", () => { botSort = { key: k, dir: botSort.key === k ? -botSort.dir : -1 }; renderBots(); });
+    hr.append(th);
+  }
+  t.append(hr);
+  const rows = [...state.bots].sort((a, b) => { const x = a[botSort.key] ?? -1e9, y = b[botSort.key] ?? -1e9; return (x > y ? 1 : x < y ? -1 : 0) * botSort.dir; });
+  for (const b of rows) {
+    const tr = el("tr");
+    const nm = el("td"); nm.append(el("span", { class: "name" }, b.name), el("span", { class: "tag" }, b.group === "dip" ? "dip-buyer" : "earlier winner")); tr.append(nm);
+    const st = el("td"); const s = el("span", { class: "status" }); s.append(el("span", { class: "dot " + (b.running ? "ok" : "bad") }), document.createTextNode(b.running ? "running" : "stopped")); st.append(s); tr.append(st);
+    tr.append(el("td", { class: "num " + dir(b.ret) }, pct(b.ret)), el("td", { class: "num " + dir(b.mkt) }, pct(b.mkt)), el("td", { class: "num " + dir(b.vs_bh) }, pct(b.vs_bh)),
+      el("td", { class: "num" }, b.closed), el("td", { class: "num" }, b.open), el("td", { class: "num" }, b.win == null ? "—" : b.win.toFixed(0) + "%"));
+    t.append(tr);
+  }
+  const up = state.bots.filter((b) => b.ret > 0).length;
+  $("bots-note").textContent = `${state.bots.length} bots · ${up} in profit · "market" = the 14 coins equal-weighted since that bot started · click a column to sort`;
+}
+
+function renderPortfolio() {
+  const t = $("port"); t.replaceChildren();
+  const hr = el("tr"); for (const [l, n] of [["Sleeve"], ["Value", 1], ["Return", 1], ["Holdings"], ["Trades", 1]]) hr.append(el("th", { class: n ? "num" : "" }, l)); t.append(hr);
+  for (const s of state.portfolio.sleeves) {
+    const tr = el("tr");
+    tr.append(el("td", { class: "name" }, NICE[s.name] || s.name), el("td", { class: "num" }, usd(s.equity)), el("td", { class: "num " + dir(s.ret) }, pct(s.ret)));
+    const h = s.holdings.slice(0, 4).map((x) => `${x.coin} ${x.w.toFixed(0)}%`);
+    if (s.holdings.length > 4) h.push(`+${s.holdings.length - 4} more`);
+    if (s.cash_w > 1) h.push(`cash ${s.cash_w.toFixed(0)}%`);
+    tr.append(el("td", { class: "holdings" }, h.join(" · ") || "cash"), el("td", { class: "num" }, s.trades));
+    t.append(tr);
+  }
+  if (state.portfolio.last_rebalance) $("port-note").textContent = `Rebalance daily after the 00:00 UTC close · last ${state.portfolio.last_rebalance}`;
+}
+
+function renderKalshi() {
+  const k = state.kalshi, t = $("kalshi"); t.replaceChildren();
+  const hr = el("tr"); for (const [l, n] of [["Variant"], ["P&L", 1], ["Settled", 1], ["Win rate", 1], ["Open", 1]]) hr.append(el("th", { class: n ? "num" : "" }, l)); t.append(hr);
+  for (const v of k.variants) {
+    const tr = el("tr");
+    tr.append(el("td", { class: "name" }, v.name.replaceAll("_", " ")), el("td", { class: "num " + dir(v.pnl) }, usd(v.pnl)), el("td", { class: "num" }, v.settled),
+      el("td", { class: "num" }, v.win == null ? "—" : v.win.toFixed(0) + "%"), el("td", { class: "num" }, v.open));
+    t.append(tr);
+  }
+  renderBrier(k);
+}
+
+function renderBrier(k) {
+  const box = $("brier"); box.replaceChildren();
+  if (!k.brier.length) { box.append(el("div", { class: "empty" }, "Waiting for settled contracts")); return; }
+  $("brier-title").textContent = `Forecast accuracy on ${k.brier_n.toLocaleString()} settled quotes (Brier score, lower is better)`;
+  const W = box.clientWidth || 420, rowH = 30, m = { l: 104, r: 56 }, H = k.brier.length * rowH + 6;
+  const max = Math.max(...k.brier.map((b) => b.score)) * 1.05;
+  const root = svg("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Brier score of the market price versus each model" });
+  k.brier.forEach((b, i) => {
+    const y = i * rowH + 6, w = (W - m.l - m.r) * b.score / max, h = 14, r = 4;
+    const lab = svg("text", { x: m.l - 10, y: y + h - 2, "text-anchor": "end", fill: css(b.market ? "--text-primary" : "--text-secondary"), "font-size": 12, "font-weight": b.market ? 600 : 400 });
+    lab.textContent = b.name; root.append(lab);
+    const x = m.l, ww = Math.max(w, r);
+    root.append(svg("path", { d: `M${x},${y}H${x + ww - r}Q${x + ww},${y} ${x + ww},${y + r}V${y + h - r}Q${x + ww},${y + h} ${x + ww - r},${y + h}H${x}Z`, fill: css(b.market ? "--benchmark" : "--series-1") }));
+    const v = svg("text", { x: x + ww + 6, y: y + h - 2, fill: css("--text-secondary"), "font-size": 12 }); v.textContent = b.score.toFixed(4); root.append(v);
+  });
+  box.append(root);
+  const mkt = k.brier.find((b) => b.market), best = k.brier.filter((b) => !b.market).sort((a, b) => a.score - b.score)[0];
+  $("brier-verdict").textContent = best.score < mkt.score
+    ? `Best model (${best.name.replace("model ", "")}) is beating the market price so far — needs hundreds more settlements to mean anything.`
+    : "The market price is more accurate than every model, so the bots' \"edges\" are mostly the model being wrong.";
+}
+
+function renderAll() { renderHeadline(); renderLegend(); renderChart(); renderFeed(); renderBots(); renderPortfolio(); renderKalshi(); }
+
+async function refresh() {
+  try {
+    const r = await fetch("/api/state", { cache: "no-store" });
+    state = await r.json(); renderAll();
+  } catch (e) {
+    $("health").replaceChildren(el("span", { class: "dot bad" }), el("span", {}, "Dashboard server not reachable — run fleet.py start"));
+  }
+}
+$("toggle-table").addEventListener("click", (e) => {
+  const tbl = $("chart-table"), on = tbl.hidden; tbl.hidden = !on; $("chart").hidden = on; $("legend").hidden = on;
+  e.target.textContent = on ? "Show chart" : "Show table"; e.target.setAttribute("aria-pressed", on);
+});
+let rt; addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => state && renderAll(), 150); });
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => state && renderAll());
+refresh(); setInterval(refresh, 30000);
+</script>
+</body>
+</html>

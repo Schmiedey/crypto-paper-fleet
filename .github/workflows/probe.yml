@@ -1,0 +1,15 @@
+name: probe
+on: workflow_dispatch
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12", cache: pip}
+      - run: |
+          nproc; free -m | head -2
+          curl -s -o /dev/null -w "kraken time: %{http_code}\n" https://api.kraken.com/0/public/Time
+          curl -s "https://api.kraken.com/0/public/OHLC?pair=XBTUSD&interval=5" | head -c 150; echo
+          python -m venv .venv && .venv/bin/pip install -q -r requirements.txt 2>&1 | tail -n 5
+          .venv/bin/python -c "import talib, freqtrade; print('talib ok', freqtrade.__version__)"
