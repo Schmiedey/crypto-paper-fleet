@@ -137,7 +137,7 @@ def start(names: list[str]) -> None:
     if not bench.exists():
         bench.write_text(json.dumps({"started": datetime.now(timezone.utc).isoformat(), "prices": prices()}))
     for name, script in (("kalshi", "scripts/kalshi_paper.py"), ("portfolio", "scripts/portfolio_paper.py"),
-                         ("dashboard", "scripts/dashboard.py")):
+                         ("dashboard", "scripts/dashboard.py"), ("daytrader", "scripts/daytrader_paper.py")):
         d = RUNS / name
         d.mkdir(exist_ok=True)
         if not _pid(d / "bot.pid"):

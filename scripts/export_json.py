@@ -59,7 +59,15 @@ def kalshi():
     return {"positions": rows(db, "select * from positions order by id desc limit 600")}
 
 
+def daytrader():
+    db = RUNS / "daytrader" / "daytrader.sqlite"
+    if not db.exists():
+        return {}
+    return {"account": rows(db, "select * from account"), "trades": rows(db, "select * from trades order by closed desc limit 300"),
+            "equity": rows(db, "select * from equity order by ts")}
+
+
 if __name__ == "__main__":
     data = {"updated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "wallet": 10000,
-            "bots": bots(), "portfolio": portfolio(), "kalshi": kalshi()}
+            "bots": bots(), "portfolio": portfolio(), "kalshi": kalshi(), "daytrader": daytrader()}
     Path(sys.argv[1]).write_text(json.dumps(data, separators=(",", ":"), default=str))
