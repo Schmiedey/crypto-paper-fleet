@@ -213,7 +213,7 @@ function fillBots(){const sel=$("botSel");const cur=S.bot;sel.innerHTML='<option
 function buildStatic(){
   $("pairSel").innerHTML=PAIRS.map(p=>`<option ${p===S.pair?"selected":""}>${p}</option>`).join("");
   $("tfs").innerHTML=TFS.map(([n,m])=>`<button data-tf="${m}" class="${m===S.tf?"on":""}">${n}</button>`).join("");
-  $("tabs").innerHTML=[["activity","Activity"],["positions","Positions"],["history","Trade history"],["bots","Bots"],["daytrader","Day trader (QQQ/SPY)"],["portfolio","Portfolio"],["kalshi","Kalshi"]].map(([k,n])=>`<button data-tab="${k}" class="${k===S.tab?"on":""}">${n}</button>`).join("");
+  $("tabs").innerHTML=[["activity","Activity"],["positions","Positions"],["history","Trade history"],["bots","Bots"],["strategies","Top strategies"],["daytrader","Day trader (QQQ/SPY)"],["portfolio","Portfolio"],["kalshi","Kalshi"]].map(([k,n])=>`<button data-tab="${k}" class="${k===S.tab?"on":""}">${n}</button>`).join("");
 }
 function tickUI(){
   const p=S.prices[S.pair];
@@ -262,6 +262,21 @@ function renderPanel(){
     const hold={};for(const x of (p.holdings||[]))(hold[x.sleeve]=hold[x.sleeve]||[]).push(x);
     const rows=Object.keys(eq).map(s=>{const val=eq[s].usd;const hs=(hold[s]||[]).map(x=>{const px=S.prices[x.coin+"/USD"];return x.coin+(px?` ${money(px*x.qty)}`:"")}).join(", ");return{s,val,hs}});
     h=rows.length?`<table>${th("<Sleeve","Equity","Return","<Holdings")}`+rows.sort((a,b)=>b.val-a.val).map(r=>`<tr><td>${r.s}</td><td>${money(r.val)}</td><td class="${cls(r.val-10000)}">${pct((r.val/10000-1)*100)}</td><td class="l mute">${r.hs||"all cash"}</td></tr>`).join("")+"</table>":'<div class="empty">No portfolio data yet.</div>';
+  }else if(S.tab==="strategies"){
+    const mu=d.multi||{},acc=Object.fromEntries((mu.account||[]).map(a=>[a.sleeve,a]));
+    const nam=((d.daytrader||{}).account||[]).find(a=>a.variant==="NAM_QQQ");
+    const rows=[["BTC_MTF","Bitcoin trend (above 20/50/100-day avg)",acc.BTC_MTF&&acc.BTC_MTF.equity,acc.BTC_MTF&&acc.BTC_MTF.pos?"LONG BTC":"cash"],
+      ["IBS_QQQ","QQQ end-of-day dip-buy (IBS)",acc.IBS_QQQ&&acc.IBS_QQQ.equity,acc.IBS_QQQ&&acc.IBS_QQQ.pos?"LONG QQQ":"cash"],
+      ["NAM_QQQ","Nasdaq intraday momentum (day trade)",nam&&nam.equity,nam?(nam.pos>0?"LONG":nam.pos<0?"SHORT":"flat (intraday only)"):"-"],
+      ["QQQ_2x_SMA200","2x QQQ above 200-day avg",acc.QQQ_2x_SMA200&&acc.QQQ_2x_SMA200.equity,acc.QQQ_2x_SMA200&&acc.QQQ_2x_SMA200.pos?"LONG 2x QQQ":"T-bills"]];
+    const eqs=rows.map(r=>r[2]).filter(x=>x!=null),blend=eqs.length?eqs.reduce((a,b)=>a+b,0)/eqs.length:null;
+    let fl=0,nb=0;for(const v of Object.values(d.bots)){nb++;fl+=v.pnl;for(const t of v.open){const u=unreal(t);if(u)fl+=u.abs}}
+    h=`<table>${th("<Strategy","Paper equity","Return","<Now","<Backtest 2018-26 (see research)")}`
+     +rows.map(r=>`<tr><td>${r[1]}</td><td>${r[2]==null?"–":money(r[2])}</td><td class="${cls((r[2]||10000)-10000)}">${r[2]==null?"–":pct((r[2]/10000-1)*100)}</td><td class="l">${r[3]}</td><td class="l mute">${{BTC_MTF:"+39%/yr, Sharpe 1.1, max drop -39%",IBS_QQQ:"+13%/yr, Sharpe 1.07, max drop -17%",NAM_QQQ:"+12%/yr, Sharpe 0.87, max drop -22%",QQQ_2x_SMA200:"+27%/yr, Sharpe 0.85, max drop -42%"}[r[0]]}</td></tr>`).join("")
+     +`<tr><td><b>Blend of the four (equal weight)</b></td><td>${blend==null?"–":money(blend)}</td><td class="${cls((blend||10000)-10000)}">${blend==null?"–":pct((blend/10000-1)*100)}</td><td class="l">&nbsp;</td><td class="l mute">+25%/yr, Sharpe 1.6, max drop -14% (optimistic)</td></tr>`
+     +`<tr><td>Dip-buyer fleet (${nb} bots, avg)</td><td>${money(10000+fl/Math.max(nb,1))}</td><td class="${cls(fl)}">${pct(fl/Math.max(nb,1)/100)}</td><td class="l">see Bots tab</td><td class="l mute">+14%/yr basket, max drop -3% (selection-biased)</td></tr></table>`;
+    const lg=(mu.log||[]).filter(l=>l.event!=="START");
+    h+=lg.length?`<table>${th("<Time","<Strategy","<Event","Price","Equity","<Why")}`+lg.map(l=>`<tr><td class="l">${when(l.ts)}</td><td class="l">${l.sleeve}</td><td class="l"><span class="pill ${l.event==="ENTER"?"buy":"sell"}">${l.event}</span></td><td>${fmtP(l.price)}</td><td>${money(l.equity)}</td><td class="l mute">${l.note||""}</td></tr>`).join("")+"</table>":'<div class="empty">Decisions: QQQ at 15:55 ET on weekdays, Bitcoin at 00:05 UTC. Switches appear here.</div>';
   }else if(S.tab==="daytrader"){
     const dt=d.daytrader||{};const acc=dt.account||[];const tr2=dt.trades||[];
     h=acc.length?`<table>${th("<Variant","Equity","Return","Position","Entry","Leverage","<Opened")}`+acc.map(a=>`<tr><td>${a.variant}</td><td>${money(a.equity)}</td><td class="${cls(a.equity-10000)}">${pct((a.equity/10000-1)*100)}</td><td>${a.pos>0?'<span class="pill buy">LONG</span>':a.pos<0?'<span class="pill sell">SHORT</span>':'<span class="mute">flat</span>'}</td><td>${a.pos?fmtP(a.entry):"–"}</td><td>${a.pos?a.lev.toFixed(2)+"x":"–"}</td><td class="l">${a.opened?when(a.opened):"–"}</td></tr>`).join("")+"</table>"
