@@ -29,7 +29,15 @@ save() {
     && git add -A && git commit -q -m "state $(date -u +%FT%TZ)" && git push -q -f "$REPO_URL" state ) || echo "state push failed"
 }
 
+prune() {  # drop run folders of strategies that were removed from the repo
+  for d in runs/*/; do n=$(basename "$d")
+    case "$n" in portfolio|daytrader|multi|dashboard) continue;; esac
+    [ -f "user_data/strategies/$n.py" ] || { rm -rf "$d"; echo "pruned $n"; }
+  done
+}
+
 restore
+prune
 .venv/bin/python scripts/fleet.py start all
 echo "started: $(pgrep -fc 'freqtrade trade') bots"
 while [ "$(date +%s)" -lt "$END" ]; do

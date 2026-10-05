@@ -84,8 +84,6 @@ def bots() -> dict[str, dict]:
     for f in sorted((ROOT / "user_data" / "strategies").glob("*.py")):
         if f.stem != "FreqaiSpot":
             out[f.stem] = {"strategy": f.stem, "model": None, "extra": {}}
-    for name, (model, extra) in FREQAI_BOTS.items():
-        out[name] = {"strategy": "FreqaiSpot", "model": model, "extra": extra}
     return out
 
 
@@ -136,8 +134,8 @@ def start(names: list[str]) -> None:
     bench = RUNS / "benchmark.json"
     if not bench.exists():
         bench.write_text(json.dumps({"started": datetime.now(timezone.utc).isoformat(), "prices": prices()}))
-    for name, script in (("kalshi", "scripts/kalshi_paper.py"), ("portfolio", "scripts/portfolio_paper.py"),
-                         ("dashboard", "scripts/dashboard.py"), ("daytrader", "scripts/daytrader_paper.py"),
+    for name, script in (("portfolio", "scripts/portfolio_paper.py"),
+                         ("daytrader", "scripts/daytrader_paper.py"),
                          ("multi", "scripts/multi_paper.py")):
         d = RUNS / name
         d.mkdir(exist_ok=True)
@@ -261,10 +259,8 @@ def status() -> None:
             print(f"\nCOMBO 30% trend + 70% dip-buyers: {0.3 * t + 0.7 * d:+.2f}%   "
                   f"(trend blend {t:+.2f}%, dip-buyer basket of {len(dip)} {d:+.2f}%)")
     sys.path.insert(0, str(ROOT / "scripts"))
-    import kalshi_paper
     import portfolio_paper
     portfolio_paper.report()
-    kalshi_paper.report()
 
 
 if __name__ == "__main__":

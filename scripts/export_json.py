@@ -8,6 +8,7 @@ from pathlib import Path
 
 import os
 RUNS = Path(os.environ.get("RUNS_DIR") or Path(__file__).resolve().parent.parent / "runs")
+STRATS = Path(__file__).resolve().parent.parent / "user_data" / "strategies"
 
 
 def iso(s):
@@ -27,8 +28,8 @@ def bots():
     out = {}
     for d in sorted(RUNS.iterdir()):
         db = d / "trades.sqlite"
-        if not db.exists() or (d / "retired").exists():
-            continue
+        if not db.exists() or (d / "retired").exists() or not (STRATS / f"{d.name}.py").exists():
+            continue  # dropped strategies keep their old database but are no longer shown
         cols = ("id,pair,is_open,open_date,close_date,open_rate,close_rate,amount,stake_amount,open_trade_value,"
                 "fee_close,close_profit,close_profit_abs,exit_reason,enter_tag,stop_loss,max_rate,min_rate")
         try:
@@ -52,13 +53,6 @@ def portfolio():
             "trades": rows(db, "select * from trades order by ts desc limit 100")}
 
 
-def kalshi():
-    db = RUNS / "kalshi" / "kalshi.sqlite"
-    if not db.exists():
-        return {}
-    return {"positions": rows(db, "select * from positions order by id desc limit 600")}
-
-
 def daytrader():
     db = RUNS / "daytrader" / "daytrader.sqlite"
     if not db.exists():
@@ -77,5 +71,5 @@ def multi():
 
 if __name__ == "__main__":
     data = {"updated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "wallet": 10000,
-            "bots": bots(), "portfolio": portfolio(), "kalshi": kalshi(), "daytrader": daytrader(), "multi": multi()}
+            "bots": bots(), "portfolio": portfolio(), "daytrader": daytrader(), "multi": multi()}
     Path(sys.argv[1]).write_text(json.dumps(data, separators=(",", ":"), default=str))

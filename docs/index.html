@@ -213,7 +213,7 @@ function fillBots(){const sel=$("botSel");const cur=S.bot;sel.innerHTML='<option
 function buildStatic(){
   $("pairSel").innerHTML=PAIRS.map(p=>`<option ${p===S.pair?"selected":""}>${p}</option>`).join("");
   $("tfs").innerHTML=TFS.map(([n,m])=>`<button data-tf="${m}" class="${m===S.tf?"on":""}">${n}</button>`).join("");
-  $("tabs").innerHTML=[["activity","Activity"],["positions","Positions"],["history","Trade history"],["bots","Bots"],["strategies","Top strategies"],["daytrader","Day trader (QQQ/SPY)"],["portfolio","Portfolio"],["kalshi","Kalshi"]].map(([k,n])=>`<button data-tab="${k}" class="${k===S.tab?"on":""}">${n}</button>`).join("");
+  $("tabs").innerHTML=[["activity","Activity"],["positions","Positions"],["history","Trade history"],["bots","Bots"],["strategies","Top strategies"],["daytrader","Day trader (QQQ/SPY)"],["portfolio","Portfolio"]].map(([k,n])=>`<button data-tab="${k}" class="${k===S.tab?"on":""}">${n}</button>`).join("");
 }
 function tickUI(){
   const p=S.prices[S.pair];
@@ -282,10 +282,6 @@ function renderPanel(){
     h=acc.length?`<table>${th("<Variant","Equity","Return","Position","Entry","Leverage","<Opened")}`+acc.map(a=>`<tr><td>${a.variant}</td><td>${money(a.equity)}</td><td class="${cls(a.equity-10000)}">${pct((a.equity/10000-1)*100)}</td><td>${a.pos>0?'<span class="pill buy">LONG</span>':a.pos<0?'<span class="pill sell">SHORT</span>':'<span class="mute">flat</span>'}</td><td>${a.pos?fmtP(a.entry):"–"}</td><td>${a.pos?a.lev.toFixed(2)+"x":"–"}</td><td class="l">${a.opened?when(a.opened):"–"}</td></tr>`).join("")+"</table>"
       +(tr2.length?`<table>${th("<Variant","<Symbol","<Side","Opened","Closed","Entry","Exit","Lev","P&L %","P&L $","<Reason")}`+tr2.map(t=>`<tr><td>${t.variant}</td><td class="l">${t.symbol}</td><td class="l">${t.side}</td><td>${when(t.opened)}</td><td>${when(t.closed)}</td><td>${fmtP(t.entry)}</td><td>${fmtP(t.exit)}</td><td>${(+t.lev).toFixed(2)}x</td><td class="${cls(t.pnl_pct)}">${pct(t.pnl_pct)}</td><td class="${cls(t.pnl)}">${money(t.pnl)}</td><td class="l mute">${t.reason}</td></tr>`).join("")+"</table>":'<div class="empty">No completed day trades yet. Checks run every 30 min, 10:00 to 15:30 ET, and everything is closed at 16:00.</div>')
       :'<div class="empty">Day trader starts with the next US market session (Mon to Fri, 9:30 to 16:00 ET).</div>';
-  }else if(S.tab==="kalshi"){
-    const ps=(d.kalshi&&d.kalshi.positions)||[];const v={};
-    for(const x of ps){const o=v[x.variant]=v[x.variant]||{open:0,n:0,pnl:0};if(x.status==="open")o.open++;else{o.n++;o.pnl+=(x.payout||0)-x.contracts*x.price-(x.fee||0)*x.contracts}}
-    h=Object.keys(v).length?`<table>${th("<Variant","Open","Settled","Realized P&L")}`+Object.entries(v).sort((a,b)=>b[1].pnl-a[1].pnl).map(([k,o])=>`<tr><td>${k}</td><td>${o.open}</td><td>${o.n}</td><td class="${cls(o.pnl)}">${money(o.pnl)}</td></tr>`).join("")+`</table><div class="empty">Kalshi crypto contracts priced from Kraken spot. Research found the market is better calibrated than this model, so treat this as an experiment.</div>`:'<div class="empty">No Kalshi data.</div>';
   }
   P.innerHTML=h;
 }

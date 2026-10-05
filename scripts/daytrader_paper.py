@@ -20,7 +20,7 @@ import yfinance as yf
 
 DIR = Path(__file__).resolve().parent.parent / "runs" / "daytrader"
 NY = ZoneInfo("America/New_York")
-VARIANTS = {"NAM_QQQ": ("QQQ", False), "NAM_SPY": ("SPY", False), "NAM_QQQ_long": ("QQQ", True)}
+VARIANTS = {"NAM_QQQ": ("QQQ", False), "NAM_QQQ_long": ("QQQ", True)}  # SPY version stopped working after 2024
 START_CASH, COST, TARGET_VOL, MAX_LEV = 10_000.0, 0.0001, 0.02, 4.0
 CHECKS = [(h, m) for h in range(10, 16) for m in (0, 30)]  # 10:00 ... 15:30
 log = logging.getLogger("daytrader")
@@ -33,6 +33,7 @@ def db():
         CREATE TABLE IF NOT EXISTS trades (variant TEXT, symbol TEXT, side TEXT, opened TEXT, closed TEXT,
             entry REAL, exit REAL, lev REAL, pnl REAL, pnl_pct REAL, reason TEXT);
         CREATE TABLE IF NOT EXISTS equity (ts TEXT, variant TEXT, equity REAL);""")
+    con.execute("DELETE FROM account WHERE variant NOT IN (%s)" % ",".join("?" * len(VARIANTS)), tuple(VARIANTS))
     for v in VARIANTS:
         con.execute("INSERT OR IGNORE INTO account VALUES (?,?,0,0,0,NULL)", (v, START_CASH))
     con.commit()
