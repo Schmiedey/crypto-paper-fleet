@@ -1,15 +1,1 @@
-true_lambo
-NFINextMultiOffsetAndHO
-NFI5MOHO_WIP
-NFI5MOHO_WIP_1
-NFI5MOHO2
-NFI5MOHO
-NostalgiaForInfinityV4HO
-NostalgiaForInfinityV7_SMAv2_1
-EI3v2_tag_cofi_dca_green
-SMAOffsetProtectOptV1_1
-NASOSv5_mod1_DanMod
-NASOSv5SL__PeetCryptofreqtrades
-NASOSv5SL__2
-NASOSv5PD__PeetCryptofreqtrades
-NASOSv5HO__2
+true_lambo NFINextMultiOffsetAndHO NASOSv5_mod1_DanMod

@@ -3,7 +3,7 @@
 Every hour (at hh:10) an LLM gets market stats for 14 coins, fresh news headlines, Fear & Greed, its own
 book and track record, and returns target portfolio weights with reasons. A hard-coded risk layer the model
 cannot override clips those weights (position cap, cash floor, stop loss, daily loss halt, turnover cap) before
-the paper executor trades them at bid/ask with Kraken's 0.26% taker fee. Every decision and its reasoning is
+the paper executor trades them at bid/ask with Kraken's 0.38% taker fee. Every decision and its reasoning is
 journaled, and `report` scores whether the model's picks beat the equal-weight market over the next 24 h.
 
 LLM: set GEMINI_API_KEY (free tier) or GROQ_API_KEY; AGENT_MODEL overrides the default model.
@@ -38,7 +38,7 @@ DIR = Path(os.environ.get("AGENT_DIR", ROOT / "runs" / "agent"))
 DB = DIR / "agent.sqlite"
 PROXY = os.environ.get("KRAKEN_PROXY", "http://127.0.0.1:8899")
 START_CASH = 10000.0
-FEE = 0.0026
+FEE = 0.0038  # Kraken Pro tier 3 taker ($10k+ 30-day volume or $20k held); smaller accounts pay 0.60-0.80%
 MIN_TRADE = 25.0
 COINS = "BTC ETH SOL XRP DOGE ADA AVAX LINK BNB LTC SHIB PEPE BONK WIF".split()  # same 14 as the fleet benchmark
 
@@ -61,7 +61,7 @@ FEEDS = {
     "GNews-macro": "https://news.google.com/rss/search?q=%22Federal+Reserve%22+OR+inflation+OR+tariffs+OR+%22SEC%22+crypto+when:1d&hl=en-US&gl=US&ceid=US:en",
 }
 
-SYSTEM = f"""You are the portfolio manager of a small long-only spot crypto paper account ($10k, Kraken, 0.26% fee per side, so a round trip costs about 0.5%). Each hour you receive market stats, news headlines and your own book, and you set target portfolio weights.
+SYSTEM = f"""You are the portfolio manager of a small long-only spot crypto paper account ($10k, Kraken, 0.38% fee per side, so a round trip costs about 0.8%). Each hour you receive market stats, news headlines and your own book, and you set target portfolio weights.
 
 Rules:
 - Long-only spot. Each weight is between 0 and {MAX_POS}; the total is at most {MAX_INVESTED}. Cash is a valid and often correct position.

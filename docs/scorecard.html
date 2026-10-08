@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Profit Scorecard</title>
+<meta name="description" content="Is the paper fleet profitable? Go-live gate, research blend vs buy & hold, exposure-adjusted leaderboard.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23131722'/><path d='M8 17l5 5 11-12' stroke='%2326a69a' stroke-width='3.5' fill='none'/></svg>">
+<style>
+:root{
+  --bg:#f6f6f4;--panel:#ffffff;--line:#e3e3df;--grid:#ececea;--text:#1b1b1a;--text2:#55554f;--mute:#85857d;
+  --up:#0f7b5f;--down:#c62f2f;--warn:#a86500;--accent:#2a78d6;
+  --s1:#2a78d6;--s2:#eb6834;--s3:#1baf7a;--s4:#eda100;--blend:#1b1b1a;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#131722;--panel:#1e222d;--line:#2a2e39;--grid:#242833;--text:#e6e8ee;--text2:#b2b5be;--mute:#787b86;
+  --up:#26a69a;--down:#ef5350;--warn:#e0a030;--accent:#3987e5;
+  --s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--blend:#e6e8ee;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#131722;--panel:#1e222d;--line:#2a2e39;--grid:#242833;--text:#e6e8ee;--text2:#b2b5be;--mute:#787b86;
+  --up:#26a69a;--down:#ef5350;--warn:#e0a030;--accent:#3987e5;
+  --s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--blend:#e6e8ee;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Ubuntu,sans-serif}
+.wrap{max-width:1120px;margin:0 auto;padding:20px 16px 48px}
+header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+h1{font-size:22px;margin:0;letter-spacing:-.2px}
+h2{font-size:15px;margin:0 0 10px;letter-spacing:.1px}
+.sub{color:var(--mute);font-size:12px}
+header a{margin-left:auto;color:var(--accent);text-decoration:none;font-size:13px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px}
+.verdict{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center}
+.day{font-size:40px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.day small{font-size:15px;color:var(--mute);font-weight:500}
+.bar{height:8px;background:var(--grid);border-radius:4px;overflow:hidden;margin:8px 0 6px}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:4px}
+.verdict p{margin:0;color:var(--text2)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.tile span{display:block;font-size:12px;color:var(--mute)}
+.tile b{display:block;font-size:24px;font-variant-numeric:tabular-nums;margin:2px 0}
+.tile em{font-style:normal;font-size:12px;color:var(--text2)}
+.up{color:var(--up)}.down{color:var(--down)}.mute{color:var(--mute)}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:13px}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th{font-size:11px;font-weight:600;color:var(--mute);text-transform:uppercase;letter-spacing:.4px}
+th:first-child,td:first-child{text-align:left}
+td.l{text-align:left}
+tr:last-child td{border-bottom:none}
+.name{font-weight:600}.desc{display:block;font-size:12px;color:var(--mute);font-weight:400}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:2px 8px;border-radius:10px;border:1px solid var(--line)}
+.pill.ok{color:var(--up);border-color:currentColor}.pill.bad{color:var(--down);border-color:currentColor}
+.pill.wait{color:var(--text2)}
+.rule{font-size:12px;color:var(--text2);margin:10px 0 0}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--text2);margin-bottom:6px}
+.legend i{display:inline-block;width:14px;height:2px;vertical-align:middle;margin-right:6px;border-radius:1px}
+.legend i.thick{height:3px}
+#chart{position:relative;height:280px}
+#chart svg{display:block;width:100%;height:100%}
+#tip{position:absolute;pointer-events:none;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12px;
+  box-shadow:0 4px 14px rgba(0,0,0,.18);display:none;min-width:170px;font-variant-numeric:tabular-nums}
+#tip div{display:flex;justify-content:space-between;gap:12px}
+#tip .sw{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+.notes{color:var(--text2);margin:0;padding-left:18px}
+.notes li{margin:4px 0}
+.err{color:var(--down);font-size:12px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.two .card{margin-bottom:0}
+@media (max-width:760px){.two{grid-template-columns:1fr}.verdict{grid-template-columns:1fr}.day{font-size:34px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Profit Scorecard</h1>
+    <span class="sub" id="updated">loading…</span>
+    <a href="./">Open the trading terminal →</a>
+  </header>
+
+  <section class="card verdict">
+    <div class="day" id="day">–<small> / 90 days</small></div>
+    <div>
+      <div class="bar"><i id="dayBar" style="width:0"></i></div>
+      <p id="verdict">Loading live results…</p>
+    </div>
+  </section>
+
+  <div class="tiles" id="tiles"></div>
+
+  <section class="card">
+    <h2>Go-live gate</h2>
+    <div class="scroll"><table id="gate"></table></div>
+    <p class="rule">Rule, fixed on 2026-10-08 before seeing the results: after <b>90 days</b> live, a strategy may trade small real money only if its live Sharpe is
+      <b>≥ 0.5</b> and its worst drop is no deeper than <b>1.5×</b> its backtest's. Everything else gets retired. No tweaking parameters mid-test.
+      Sharpe needs 20+ data points before it's shown.</p>
+  </section>
+
+  <section class="card">
+    <h2>Research blend: equity per $10k</h2>
+    <div class="legend" id="legend"></div>
+    <div id="chart"><svg id="svg" role="img" aria-label="Equity of the four research strategies and their equal-weight blend"></svg><div id="tip"></div></div>
+  </section>
+
+  <div class="two">
+    <section class="card">
+      <h2>Crypto dip-buyers, ranked by alpha</h2>
+      <div class="scroll"><table id="dips"></table></div>
+      <p class="rule"><b>alpha</b> = return minus what the coin basket made at the same average exposure, so a bot that sat in cash scores 0.
+        <b>t</b> = t-stat of closed trades (5+ needed). |t| under 2 is noise.</p>
+    </section>
+    <section class="card">
+      <h2>Experiments (not real-money candidates)</h2>
+      <div class="scroll"><table id="exps"></table></div>
+      <p class="rule">Older trend sleeves from the first search and the LLM news agent. Kept running for comparison only.</p>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:16px">
+    <h2>What the numbers assume</h2>
+    <ul class="notes">
+      <li>Crypto fills pay Kraken Pro's <b>tier-3 taker fee, 0.38%</b> per side (needs $10k+ monthly volume or $20k held). A small new account pays 0.60–0.80%, which wipes out most of these edges.</li>
+      <li>QQQ trades cost 5 bp per side; the intraday Nasdaq bot assumes 1 bp and up to 4× leverage. Day trading stocks with margin needs $25k in a US account (pattern-day-trader rule).</li>
+      <li>Backtest figures are the 2022+ window where available and were chosen <i>after</i> a large search, so expect live results to come in lower.</li>
+      <li>A Sharpe-1 strategy loses money in about 46% of 4-day windows and 31% of 3-month windows. Short-run results carry almost no information.</li>
+    </ul>
+    <div class="err" id="err"></div>
+  </section>
+</div>
+
+<script>
+const DATA_URL = location.hostname==="localhost"||location.hostname==="127.0.0.1" ? "data.json"
+  : "https://raw.githubusercontent.com/Schmiedey/crypto-paper-fleet/state/data.json";
+const GATE_DAYS=90, GATE_SHARPE=0.5, GATE_DD=1.5, MIN_PTS=20;
+// Backtest expectations from research/results (deep_search.csv 2022+, daytrade.csv, bt/final_three_windows.csv OOS 2025-26).
+const PLAN=[
+  {id:"BTC_MTF",name:"Bitcoin trend",short:"BTC trend",desc:"long while above 20/50/100-day averages",ann:365,bt:{sharpe:0.93,dd:-0.34},c:"--s1"},
+  {id:"IBS_QQQ",name:"QQQ end-of-day dip-buy",short:"QQQ IBS",desc:"IBS < 0.1 in, > 0.8 out",ann:252,bt:{sharpe:1.27,dd:-0.12},c:"--s2"},
+  {id:"NAM_QQQ",name:"Nasdaq intraday momentum",short:"Nasdaq NAM",desc:"day trade; 2024+ backtest only Sharpe 0.45",ann:252,bt:{sharpe:0.92,dd:-0.22},c:"--s3"},
+  {id:"QQQ_2x_SMA200",name:"2x QQQ trend",short:"2x QQQ",desc:"2x while above 200-day average",ann:252,bt:{sharpe:0.86,dd:-0.37},c:"--s4"},
+];
+const DIPS=[
+  {id:"true_lambo",bt:{sharpe:1.79,dd:-0.10}},
+  {id:"NFINextMultiOffsetAndHO",bt:{sharpe:0.73,dd:-0.09}},
+  {id:"NASOSv5_mod1_DanMod",bt:{sharpe:0.69,dd:-0.06}},
+];
+const $=id=>document.getElementById(id);
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const pct=(x,d=2)=>x==null||!isFinite(x)?"–":(x>0?"+":"")+(x*100).toFixed(d)+"%";
+const cls=x=>x==null?"mute":x>0?"up":x<0?"down":"mute";
+const money=x=>"$"+Math.round(x).toLocaleString();
+const DAY=864e5;
+const t=s=>new Date(/T|Z|\+/.test(s)?s:s+"T21:00:00Z").getTime(); // bare dates are US closes
+
+function stats(pts,ann){ // pts: [{t,v}] sorted
+  if(!pts.length)return{ret:null,sharpe:null,dd:null,n:0};
+  let peak=pts[0].v,dd=0;for(const p of pts){peak=Math.max(peak,p.v);dd=Math.min(dd,p.v/peak-1)}
+  const r=[];for(let i=1;i<pts.length;i++)r.push(pts[i].v/pts[i-1].v-1);
+  let sharpe=null;
+  if(r.length>=MIN_PTS){const m=r.reduce((a,b)=>a+b,0)/r.length,sd=Math.sqrt(r.reduce((a,b)=>a+(b-m)**2,0)/(r.length-1));sharpe=sd?m/sd*Math.sqrt(ann):null}
+  return{ret:pts[pts.length-1].v/10000-1,sharpe,dd,n:r.length};
+}
+function gate(days,s,bt){
+  if(days<GATE_DAYS){
+    const hint=s.sharpe==null?"not enough data":(s.sharpe>=GATE_SHARPE&&s.dd>=bt.dd*GATE_DD?"tracking above the bar":"tracking below the bar");
+    return`<span class="pill wait">◷ Day ${Math.floor(days)}/${GATE_DAYS}</span><span class="desc">${hint}</span>`;
+  }
+  const ok=s.sharpe!=null&&s.sharpe>=GATE_SHARPE&&s.dd>=bt.dd*GATE_DD;
+  return ok?`<span class="pill ok">✓ Pass</span><span class="desc">eligible for small real money</span>`
+           :`<span class="pill bad">✗ Fail</span><span class="desc">retire it</span>`;
+}
+
+function series(d){
+  const out={},sc=d.scorecard||{},now=Date.now();
+  for(const p of PLAN){
+    let rows=[];
+    if(p.id==="NAM_QQQ")rows=((d.daytrader||{}).equity||[]).filter(r=>r.variant===p.id).map(r=>({t:t(r.ts),v:r.equity}));
+    else rows=((d.multi||{}).equity||[]).filter(r=>r.sleeve===p.id).map(r=>({t:t(r.ts),v:r.equity}));
+    rows.sort((a,b)=>a.t-b.t);
+    if(rows.length&&rows[0].v!==10000)rows.unshift({t:rows[0].t-DAY/2,v:10000});
+    const acc=p.id==="NAM_QQQ"?((d.daytrader||{}).account||[]).find(a=>a.variant===p.id):((d.multi||{}).account||[]).find(a=>a.sleeve===p.id);
+    const start=acc&&acc.since?t(acc.since):rows.length?rows[0].t:now;
+    out[p.id]={pts:rows,start};
+  }
+  // Dip-buyers: realized equity by day plus today's mark-to-market (open-trade swings in between aren't recorded).
+  const st=sc.started?t(sc.started):now;
+  for(const b of DIPS){
+    const bot=(d.bots||{})[b.id],live=(sc.bots||[]).find(x=>x.name===b.id);
+    const cl=(bot?bot.closed:[]).filter(x=>x.close_date).map(x=>({t:t(x.close_date),p:x.close_profit_abs||0})).sort((a,b)=>a.t-b.t);
+    const pts=[];let eq=10000,i=0;
+    for(let day=st;day<now;day+=DAY){while(i<cl.length&&cl[i].t<=day){eq+=cl[i].p;i++}pts.push({t:day,v:eq})}
+    pts.push({t:now,v:10000*(1+(live?live.ret:0)/100)});
+    out[b.id]={pts,start:st,live};
+  }
+  return out;
+}
+
+function render(d){
+  const sc=d.scorecard||{},S=series(d),now=Date.now();
+  $("updated").textContent="data "+new Date(d.updated).toLocaleString()+" · refreshes every minute";
+  $("err").textContent=sc.error?"export warning: "+sc.error:"";
+  // Verdict
+  const firstStart=Math.min(...PLAN.map(p=>S[p.id].start));
+  const days=(now-firstStart)/DAY;
+  $("day").innerHTML=`${Math.floor(days)}<small> / ${GATE_DAYS} days</small>`;
+  $("dayBar").style.width=Math.min(100,days/GATE_DAYS*100)+"%";
+  const last=PLAN.map(p=>{const s=S[p.id].pts;return s.length?s[s.length-1].v:10000});
+  const blend=last.reduce((a,b)=>a+b,0)/last.length/10000-1;
+  const dips=DIPS.map(b=>S[b.id].live).filter(Boolean);
+  const dipRet=dips.length?dips.reduce((a,b)=>a+b.ret,0)/dips.length/100:null;
+  const dipAlpha=dips.length?dips.reduce((a,b)=>a+b.alpha,0)/dips.length/100:null;
+  const btc=sc.btc&&sc.btc.start?sc.btc.last/sc.btc.start-1:null;
+  const q=sc.qqq||{},qd=Object.keys(q).sort(),qs=qd.filter(k=>t(k)>=firstStart-DAY/2)[0];
+  const qqq=qs?q[qd[qd.length-1]]/q[qs]-1:null;
+  $("verdict").innerHTML=days<GATE_DAYS
+    ?`<b>Too early to call.</b> ${Math.ceil(GATE_DAYS-days)} days until the first pass/fail decision. So far the research blend is <b class="${cls(blend)}">${pct(blend)}</b>
+      against <b class="${cls(qqq)}">${pct(qqq)}</b> for QQQ and <b class="${cls(btc)}">${pct(btc)}</b> for Bitcoin. Nothing here is real money and nothing is statistically meaningful yet.`
+    :`<b>Decision time.</b> Strategies marked ✓ below passed the rule; everything else should be retired.`;
+  // Tiles
+  const tile=(label,v,note)=>`<div class="tile"><span>${label}</span><b class="${cls(v)}">${pct(v)}</b><em>${note}</em></div>`;
+  $("tiles").innerHTML=
+    tile("Research blend (4 strategies)",blend,"equal weight · the plan")+
+    tile("Crypto dip-buyers (3 bots)",dipRet,`alpha ${pct(dipAlpha)} vs coin basket`)+
+    tile("QQQ buy & hold",qqq,"same period as the blend")+
+    tile("Bitcoin buy & hold",btc,"since the fleet started")+
+    tile("Coin basket buy & hold",sc.basket_bh!=null?sc.basket_bh/100:null,"equal weight, all fleet coins");
+  // Gate table
+  const row=(name,desc,days,s,bt,trades)=>`<tr><td><span class="name">${name}</span><span class="desc">${desc}</span></td>
+    <td>${Math.floor(days)}</td><td class="${cls(s.ret)}">${pct(s.ret)}</td>
+    <td>${s.sharpe==null?`<span class="mute">– (${s.n}/${MIN_PTS})</span>`:s.sharpe.toFixed(2)}</td><td class="mute">${bt.sharpe.toFixed(2)}</td>
+    <td class="${cls(s.dd)}">${pct(s.dd,1)}</td><td class="mute">${pct(bt.dd,0)}</td><td>${trades}</td><td class="l">${gate(days,s,bt)}</td></tr>`;
+  let h=`<tr><th>Strategy</th><th>Days</th><th>Return</th><th>Sharpe</th><th>Backtest</th><th>Worst drop</th><th>Backtest</th><th>Trades</th><th>Status</th></tr>`;
+  const mlog=(d.multi||{}).log||[],dtr=(d.daytrader||{}).trades||[];
+  for(const p of PLAN){
+    const s=stats(S[p.id].pts,p.ann);
+    const n=p.id==="NAM_QQQ"?dtr.filter(x=>x.variant===p.id).length:mlog.filter(x=>x.sleeve===p.id).length;
+    h+=row(p.name,p.desc,(now-S[p.id].start)/DAY,s,p.bt,n);
+  }
+  for(const b of DIPS){
+    const s=stats(S[b.id].pts,365),live=S[b.id].live;
+    if(live)s.ret=live.ret/100;
+    h+=row(b.id,"crypto dip-buyer · backtest is 2025–26 out-of-sample",(now-S[b.id].start)/DAY,s,b.bt,live?live.closed+live.open:0);
+  }
+  $("gate").innerHTML=h;
+  // Dip-buyer leaderboard
+  const lb=(sc.bots||[]).slice().sort((a,b)=>b.alpha-a.alpha);
+  $("dips").innerHTML=`<tr><th>Bot</th><th>Return</th><th>Exposure</th><th>Alpha</th><th>Closed</th><th>Open</th><th>Win</th><th>t</th></tr>`+
+    (lb.length?lb.map(b=>`<tr><td class="name">${b.name}</td><td class="${cls(b.ret)}">${pct(b.ret/100)}</td><td>${(b.expo*100).toFixed(0)}%</td>
+      <td class="${cls(b.alpha)}">${pct(b.alpha/100)}</td><td>${b.closed}</td><td>${b.open}</td><td>${b.closed?Math.round(b.wins/b.closed*100)+"%":"–"}</td>
+      <td>${b.t==null?"–":b.t.toFixed(1)}</td></tr>`).join(""):`<tr><td class="mute" colspan="8">No leaderboard in the data yet.</td></tr>`);
+  // Experiments
+  const pe={};for(const r of ((d.portfolio||{}).daily||[]))pe[r.sleeve]=r.usd;
+  for(const r of ((d.portfolio||{}).equity||[]).slice().reverse())pe[r.sleeve]=r.usd; // latest hourly mark wins
+  const ag=(d.agent||{}).equity||[];if(ag.length)pe["LLM news agent"]=ag[ag.length-1].usd;
+  const ex=Object.entries(pe).sort((a,b)=>b[1]-a[1]);
+  $("exps").innerHTML=`<tr><th>Experiment</th><th>Equity</th><th>Return</th></tr>`+(ex.length?ex.map(([k,v])=>
+    `<tr><td>${k}</td><td>${money(v)}</td><td class="${cls(v-10000)}">${pct(v/10000-1)}</td></tr>`).join(""):`<tr><td class="mute" colspan="3">No data yet.</td></tr>`);
+  chart(S,firstStart);
+}
+
+// Daily grid: each strategy's last known equity per day (flat $10k before it started) and their equal-weight blend.
+function chart(S,start){
+  const svg=$("svg"),tip=$("tip"),W=svg.clientWidth||800,H=svg.clientHeight||280,m={l:56,r:84,t:10,b:26};
+  const days=[];for(let x=start-start%DAY+DAY*0.875;x<=Date.now()+DAY;x+=DAY)days.push(Math.min(x,Date.now()));
+  const lines=PLAN.map(p=>{const pts=S[p.id].pts;let i=0,v=10000;return{p,vals:days.map(x=>{while(i<pts.length&&pts[i].t<=x){v=pts[i].v;i++}return v})}});
+  const blend={p:{id:"blend",name:"Blend",c:"--blend"},vals:days.map((_,k)=>lines.reduce((a,l)=>a+l.vals[k],0)/lines.length)};
+  const all=[...lines,blend];
+  const vs=all.flatMap(l=>l.vals);let lo=Math.min(...vs,10000),hi=Math.max(...vs,10000);const pad=(hi-lo)*0.12||150;lo-=pad;hi+=pad;
+  const X=k=>m.l+(days.length<2?0:k/(days.length-1))*(W-m.l-m.r),Y=v=>m.t+(1-(v-lo)/(hi-lo))*(H-m.t-m.b);
+  let g="";
+  const ticks=5;for(let i=0;i<=ticks;i++){const v=lo+(hi-lo)*i/ticks,y=Y(v);
+    g+=`<line x1="${m.l}" x2="${W-m.r}" y1="${y}" y2="${y}" stroke="${css("--grid")}"/><text x="${m.l-8}" y="${y+4}" text-anchor="end" font-size="11" fill="${css("--mute")}">${money(v)}</text>`}
+  g+=`<line x1="${m.l}" x2="${W-m.r}" y1="${Y(10000)}" y2="${Y(10000)}" stroke="${css("--mute")}" stroke-dasharray="3 4"/>`;
+  const step=Math.max(1,Math.ceil(days.length/7));
+  days.forEach((x,k)=>{if(k%step===0)g+=`<text x="${X(k)}" y="${H-6}" text-anchor="middle" font-size="11" fill="${css("--mute")}">${new Date(x).toLocaleDateString(undefined,{month:"short",day:"numeric"})}</text>`});
+  // Direct labels at line ends, nudged apart so they don't collide.
+  const ends=all.map(l=>({l,y:Y(l.vals[l.vals.length-1])})).sort((a,b)=>a.y-b.y);
+  for(let i=1;i<ends.length;i++)if(ends[i].y-ends[i-1].y<13)ends[i].y=ends[i-1].y+13;
+  for(const l of all){const c=css(l.p.c),w=l.p.id==="blend"?3:2;
+    g+=`<polyline fill="none" stroke="${c}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round" points="${l.vals.map((v,k)=>X(k)+","+Y(v)).join(" ")}"/>`;
+    if(days.length<=31)l.vals.forEach((v,k)=>g+=`<circle cx="${X(k)}" cy="${Y(v)}" r="4" fill="${c}" stroke="${css("--panel")}" stroke-width="2"/>`)}
+  for(const e of ends)g+=`<text x="${W-m.r+8}" y="${e.y+4}" font-size="11" fill="${css("--text2")}">${e.l.p.id==="blend"?"Blend":e.l.p.short}</text>`;
+  g+=`<line id="xh" y1="${m.t}" y2="${H-m.b}" stroke="${css("--mute")}" visibility="hidden"/><rect id="hit" x="${m.l}" y="0" width="${W-m.l-m.r}" height="${H}" fill="transparent"/>`;
+  svg.setAttribute("viewBox",`0 0 ${W} ${H}`);svg.innerHTML=g;
+  $("legend").innerHTML=all.map(l=>`<span><i class="${l.p.id==="blend"?"thick":""}" style="background:var(${l.p.c})"></i>${l.p.id==="blend"?"Equal-weight blend":l.p.name}</span>`).join("");
+  const hit=$("hit"),xh=$("xh");
+  const move=ev=>{const r=svg.getBoundingClientRect(),px=(ev.clientX-r.left)*(W/r.width);
+    const k=Math.max(0,Math.min(days.length-1,Math.round((px-m.l)/((W-m.l-m.r)/Math.max(1,days.length-1)))));
+    xh.setAttribute("x1",X(k));xh.setAttribute("x2",X(k));xh.setAttribute("visibility","visible");
+    tip.innerHTML=`<b>${new Date(days[k]).toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"})}</b>`+
+      all.map(l=>`<div><span><span class="sw" style="background:var(${l.p.c})"></span>${l.p.id==="blend"?"Blend":l.p.name}</span><span class="${cls(l.vals[k]-10000)}">${pct(l.vals[k]/10000-1)}</span></div>`).join("");
+    tip.style.display="block";const tx=X(k)*r.width/W;tip.style.left=Math.min(r.width-tip.offsetWidth-4,Math.max(4,tx+12))+"px";tip.style.top="8px"};
+  hit.addEventListener("pointermove",move);hit.addEventListener("pointerdown",move);
+  hit.addEventListener("pointerleave",()=>{tip.style.display="none";xh.setAttribute("visibility","hidden")});
+}
+
+let DATA=null;
+async function load(){
+  try{const r=await fetch(DATA_URL+"?t="+Math.floor(Date.now()/30000),{cache:"no-store"});DATA=await r.json();render(DATA)}
+  catch(e){$("err").textContent="Could not load data.json: "+e.message}
+}
+load();setInterval(load,60000);
+let rt;addEventListener("resize",()=>{clearTimeout(rt);rt=setTimeout(()=>DATA&&render(DATA),150)});
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change",()=>DATA&&render(DATA));
+</script>
+</body>
+</html>

@@ -5,7 +5,7 @@
   QQQ_2x_SMA200  2x QQQ while QQQ is above its 200-day average, otherwise T-bills. Leverage costs T-bill + 0.5%.
                  Decided at 15:55 ET. 5 bp per unit of turnover.
   BTC_MTF        Bitcoin long while above its 20, 50 and 100-day averages together, otherwise cash.
-                 Decided at 00:05 UTC on the last completed daily Kraken candle. 25 bp per switch.
+                 Decided at 00:05 UTC on the last completed daily Kraken candle. 38 bp per switch (Kraken Pro tier 3 taker).
 
 Equity is marked at every decision, so it matches the backtest accounting. $10,000 each. The NAM Nasdaq
 day trader lives in daytrader_paper.py; the dashboard blends the four. State: runs/multi/multi.sqlite.
@@ -122,7 +122,7 @@ def decide_btc(con, now):
     key = str(c.index[-1].date())
     ok = c.iloc[-1] > c.rolling(20).mean().iloc[-1] and c.iloc[-1] > c.rolling(50).mean().iloc[-1] \
         and c.iloc[-1] > c.rolling(100).mean().iloc[-1]
-    settle(con, "BTC_MTF", key, float(c.iloc[-1]), 1.0 if ok else 0.0, 0.0025, {"cash": tbill() / 365}, 1, now,
+    settle(con, "BTC_MTF", key, float(c.iloc[-1]), 1.0 if ok else 0.0, 0.0038, {"cash": tbill() / 365}, 1, now,
            f"close {c.iloc[-1]:.0f}")
     con.commit()
 

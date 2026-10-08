@@ -2,7 +2,7 @@
 
 Once a day, just after the 00:00 UTC daily close, each sleeve computes target weights from completed
 Binance daily candles (exactly the research code) and rebalances its own $10k paper account at
-live Kraken bid/ask prices with Kraken's 0.26% taker fee. Equity is marked to market hourly.
+live Kraken bid/ask prices with Kraken's 0.38% taker fee (Pro tier 3). Equity is marked to market hourly.
 
   python scripts/portfolio_paper.py          run (fleet.py starts it)
   python scripts/portfolio_paper.py report   equity of each sleeve vs. BTC buy & hold
@@ -29,7 +29,7 @@ DIR = ROOT / "runs" / "portfolio"
 DB = DIR / "portfolio.sqlite"
 PROXY = "http://127.0.0.1:8899"
 START_CASH = 10000.0
-FEE = 0.0026
+FEE = 0.0038  # Kraken Pro tier 3 taker ($10k+ 30-day volume or $20k held); smaller accounts pay 0.60-0.80%
 MIN_TRADE = 25.0  # skip rebalancing trades smaller than this many dollars
 COINS = ("BTC ETH BNB SOL XRP ADA DOGE AVAX LINK DOT LTC TRX ATOM ETC XLM BCH FIL NEAR UNI AAVE ALGO "
          "ICP APT ARB OP SUI SHIB PEPE INJ FET HBAR SEI TIA WIF BONK FLOKI SAND MANA AXS XTZ CRV VET").split()

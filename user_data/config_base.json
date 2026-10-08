@@ -2,6 +2,8 @@
     "$comment": "Shared paper-trading config. Every bot gets $10k of fake USD on live Kraken prices, routed through scripts/kraken_proxy.py.",
     "dry_run": true,
     "dry_run_wallet": 10000,
+    "$fee": "Kraken Pro tier 3 taker fee (10k+ 30-day volume or 20k held, schedule of July 2026). Tier 1 is 0.80%, tier 2 0.60%.",
+    "fee": 0.0038,
     "trading_mode": "spot",
     "stake_currency": "USD",
     "stake_amount": "unlimited",

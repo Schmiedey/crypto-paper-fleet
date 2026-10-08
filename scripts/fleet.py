@@ -208,43 +208,84 @@ def rotate(k: int = 3, min_closed: int = 10) -> None:
         print(f"nobody to retire yet (need >= {min_closed} closed trades and trailing buy & hold)")
 
 
-def leaderboard() -> tuple[list, float]:
-    now = prices()
+def _ts(s: str) -> datetime:
+    return datetime.fromisoformat(s.replace(" ", "T")[:19]).replace(tzinfo=timezone.utc)
+
+
+def leaderboard(now: dict | None = None) -> tuple[list, float]:
+    """Rows (name, running, return%, closed, open, wins, realized, exposure, alpha%, t) sorted by alpha.
+    exposure = average share of the wallet invested since the fleet started; alpha = return minus what the
+    buy & hold basket made at that same exposure, so a bot that just sat in cash scores 0, not +B&H."""
+    now = now or prices()
     bench = json.loads((RUNS / "benchmark.json").read_text())
-    bh = sum(now[p] / bench["prices"][p] - 1 for p in bench["prices"]) / len(bench["prices"]) * 100  # original 14-coin basket
+    bh = sum(now[p] / bench["prices"][p] - 1 for p in bench["prices"]) / len(bench["prices"]) * 100  # basket at fleet start
+    t0, t1 = _ts(bench["started"]), datetime.now(timezone.utc)
+    span = max((t1 - t0).total_seconds(), 1)
     rows = []
     for name in (n for n in bots() if (RUNS / n).exists()):
         db = RUNS / name / "trades.sqlite"
         running = bool(_pid(RUNS / name / "bot.pid"))
         if not db.exists():
-            rows.append((name, running, 0.0, 0, 0, 0, None))
+            rows.append((name, running, 0.0, 0, 0, 0, None, 0.0, 0.0, None))
             continue
         con = sqlite3.connect(db)
         try:
-            closed = con.execute("SELECT close_profit_abs FROM trades WHERE is_open=0").fetchall()
+            closed = con.execute("SELECT close_profit_abs, close_profit FROM trades WHERE is_open=0").fetchall()
             opened = con.execute("SELECT pair, amount, stake_amount, fee_open FROM trades WHERE is_open=1").fetchall()
+            spans = con.execute("SELECT open_date, close_date, stake_amount FROM trades").fetchall()
         except sqlite3.OperationalError:  # bot hasn't created its tables yet
-            closed, opened = [], []
+            closed, opened, spans = [], [], []
         con.close()
         realized = sum(r[0] or 0 for r in closed)
         # Value open positions at the last price, net of a taker exit fee.
         unreal = sum(amt * now.get(pair, 0) * (1 - fee) - stake for pair, amt, stake, fee in opened if amt)
         wins = sum(1 for r in closed if (r[0] or 0) > 0)
         ret = (realized + unreal) / WALLET * 100
-        rows.append((name, running, ret, len(closed), len(opened), wins, realized))
-    rows.sort(key=lambda r: -r[2])
+        held = sum(stake * max(0, (min(_ts(c) if c else t1, t1) - max(_ts(o), t0)).total_seconds())
+                   for o, c, stake in spans if o and stake)
+        expo = held / (WALLET * span)
+        tr = [r[1] for r in closed if r[1] is not None]
+        t = None
+        if len(tr) >= 5:
+            m = sum(tr) / len(tr)
+            sd = (sum((x - m) ** 2 for x in tr) / (len(tr) - 1)) ** 0.5
+            t = m / sd * len(tr) ** 0.5 if sd else None
+        rows.append((name, running, ret, len(closed), len(opened), wins, realized, expo, ret - expo * bh, t))
+    rows.sort(key=lambda r: -r[8])
     return rows, bh
+
+
+def blend() -> None:
+    """The deep-search top 4 at equal weight: the portfolio research says is worth running (+25%/yr, Sharpe 1.6, backtest)."""
+    mdb, ddb = RUNS / "multi" / "multi.sqlite", RUNS / "daytrader" / "daytrader.sqlite"
+    eq = {}
+    for db, sql in ((mdb, "SELECT sleeve, equity, since FROM account"),
+                    (ddb, "SELECT variant, equity, NULL FROM account WHERE variant='NAM_QQQ'")):
+        if db.exists():
+            con = sqlite3.connect(db)
+            try:
+                eq.update({r[0]: r[1] for r in con.execute(sql)})
+            except sqlite3.OperationalError:
+                pass
+            con.close()
+    if eq:
+        parts = "  ".join(f"{k} {(v / 10000 - 1) * 100:+.2f}%" for k, v in eq.items())
+        print(f"\nBLEND (research top 4, equal weight): {(sum(eq.values()) / len(eq) / 10000 - 1) * 100:+.2f}%   ({parts})")
 
 
 def status() -> None:
     rows, bh = leaderboard()
     started = json.loads((RUNS / "benchmark.json").read_text())["started"]
     hours = (datetime.now(timezone.utc) - datetime.fromisoformat(started)).total_seconds() / 3600
-    print(f"Running {hours:.1f}h | equal-weight buy&hold of all 14 coins: {bh:+.2f}%\n")
-    print(f"{'bot':31} {'up':>3} {'return':>8} {'vs B&H':>8} {'closed':>6} {'open':>4} {'win%':>5}")
-    for name, running, ret, n, o, w, _ in rows:
+    print(f"Running {hours:.1f}h | equal-weight buy&hold of the coin basket: {bh:+.2f}% | fee 0.38% per side\n")
+    print(f"{'bot':27} {'up':>3} {'return':>8} {'expo':>5} {'alpha':>7} {'closed':>6} {'open':>4} {'win%':>5} {'t':>5}")
+    for name, running, ret, n, o, w, _, expo, alpha, t in rows:
         win = f"{w / n * 100:.0f}" if n else "-"
-        print(f"{name:31} {'✓' if running else '✗':>3} {ret:+7.2f}% {ret - bh:+7.2f}% {n:6} {o:4} {win:>5}")
+        ts = f"{t:+.1f}" if t is not None else "-"
+        print(f"{name:27} {'✓' if running else '✗':>3} {ret:+7.2f}% {expo * 100:4.0f}% {alpha:+6.2f}% {n:6} {o:4} {win:>5} {ts:>5}")
+    print("alpha = return minus buy & hold at the same exposure (sitting in cash scores 0). t = closed-trade t-stat, needs 5+;"
+          " |t| < 2 is noise.")
+    blend()
     # The combination that tested best: 30% trend portfolio + 70% equal-weight basket of research finalists.
     deployed = ROOT / "research" / "bt" / "deployed.txt"
     pdb = RUNS / "portfolio" / "portfolio.sqlite"

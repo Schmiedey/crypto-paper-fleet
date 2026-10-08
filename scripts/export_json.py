@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import os
+import time
 RUNS = Path(os.environ.get("RUNS_DIR") or Path(__file__).resolve().parent.parent / "runs")
 STRATS = Path(__file__).resolve().parent.parent / "user_data" / "strategies"
 
@@ -50,6 +51,8 @@ def portfolio():
         return {}
     return {"cash": rows(db, "select * from cash"), "holdings": rows(db, "select * from holdings where qty>0"),
             "equity": rows(db, "select * from equity order by ts desc limit 600"),
+            "daily": rows(db, "select sleeve, d ts, usd from (select sleeve, substr(ts,1,10) d, usd, row_number() over "
+                              "(partition by sleeve, substr(ts,1,10) order by ts desc) rn from equity) where rn=1 order by d"),
             "trades": rows(db, "select * from trades order by ts desc limit 100")}
 
 
@@ -77,7 +80,38 @@ def multi():
             "equity": rows(db, "select * from equity order by ts")}
 
 
+def scorecard():
+    """Inputs for docs/scorecard.html: the exposure-adjusted leaderboard plus BTC and QQQ buy & hold since the start.
+    Prices come straight from Kraken (the fleet's proxy is down during the final save of a leg)."""
+    out = {}
+    try:
+        import ccxt
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import fleet
+        fleet.RUNS = RUNS
+        bench = json.loads((RUNS / "benchmark.json").read_text())
+        pairs = sorted(set(json.loads(fleet.BASE_CFG.read_text())["exchange"]["pair_whitelist"]) | set(bench["prices"]))
+        now = {p: t["last"] for p, t in ccxt.kraken().fetch_tickers(pairs).items()}
+        lb, bh = fleet.leaderboard(now)
+        keys = ("name", "running", "ret", "closed", "open", "wins", "realized", "expo", "alpha", "t")
+        out.update(started=bench["started"], basket_bh=bh, bots=[dict(zip(keys, r)) for r in lb],
+                   btc={"start": bench["prices"].get("BTC/USD"), "last": now.get("BTC/USD")})
+    except Exception as e:  # never let the dashboard export break a save
+        out["error"] = f"leaderboard: {e}"
+    cache = Path("/tmp/fleet_qqq.json")  # yfinance is slow; refresh hourly
+    try:
+        if not cache.exists() or time.time() - cache.stat().st_mtime > 3600:
+            import yfinance as yf
+            q = yf.download("QQQ", start="2026-10-01", interval="1d", progress=False, auto_adjust=False)
+            q.columns = [c[0] if isinstance(c, tuple) else c for c in q.columns]
+            cache.write_text(json.dumps({str(i.date()): float(v) for i, v in q.Close.dropna().items()}))
+        out["qqq"] = json.loads(cache.read_text())
+    except Exception as e:
+        out["error"] = (out.get("error", "") + f" qqq: {e}").strip()
+    return out
+
+
 if __name__ == "__main__":
     data = {"updated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "wallet": 10000,
-            "bots": bots(), "portfolio": portfolio(), "daytrader": daytrader(), "multi": multi(), "agent": agent()}
+            "bots": bots(), "portfolio": portfolio(), "daytrader": daytrader(), "multi": multi(), "agent": agent(), "scorecard": scorecard()}
     Path(sys.argv[1]).write_text(json.dumps(data, separators=(",", ":"), default=str))
