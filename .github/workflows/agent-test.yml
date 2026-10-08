@@ -1,0 +1,18 @@
+name: agent-test
+on: workflow_dispatch
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install -q ccxt==4.5.85 pandas==3.0.6 numpy==2.2.6 requests==2.34.2
+      - env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          AGENT_DIR: /tmp/agent
+          KRAKEN_PROXY: ""
+        run: |
+          python scripts/agent_paper.py once 2>&1 | tail -n 12
+          sqlite3 -line /tmp/agent/agent.sqlite "select model, regime, view, weights, reasons, headlines from decisions" | cut -c1-600
+          sqlite3 -column /tmp/agent/agent.sqlite "select coin, side, round(qty*price,0) usd, why from trades" | cut -c1-200
