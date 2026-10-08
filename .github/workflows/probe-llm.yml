@@ -1,0 +1,11 @@
+name: probe-llm
+on: workflow_dispatch
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: |
+          curl -s -o /tmp/m.json -w "groq models: %{http_code}\n" https://api.groq.com/openai/v1/models -H "Authorization: Bearer $GROQ_API_KEY"
+          head -c 150 /tmp/m.json; echo
