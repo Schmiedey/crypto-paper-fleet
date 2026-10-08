@@ -136,6 +136,7 @@ def start(names: list[str]) -> None:
         bench.write_text(json.dumps({"started": datetime.now(timezone.utc).isoformat(), "prices": prices()}))
     for name, script in (("portfolio", "scripts/portfolio_paper.py"),
                          ("daytrader", "scripts/daytrader_paper.py"),
+                         ("agent", "scripts/agent_paper.py"),
                          ("multi", "scripts/multi_paper.py")):
         d = RUNS / name
         d.mkdir(exist_ok=True)
@@ -261,6 +262,8 @@ def status() -> None:
     sys.path.insert(0, str(ROOT / "scripts"))
     import portfolio_paper
     portfolio_paper.report()
+    import agent_paper
+    agent_paper.report()
 
 
 if __name__ == "__main__":

@@ -61,6 +61,14 @@ def daytrader():
             "equity": rows(db, "select * from equity order by ts")}
 
 
+def agent():
+    db = RUNS / "agent" / "agent.sqlite"
+    if not db.exists():
+        return {}
+    return {"equity": rows(db, "select * from equity order by ts"), "trades": rows(db, "select * from trades order by ts desc limit 200"),
+            "decisions": rows(db, "select id, ts, model, regime, view, weights, reasons, headlines, equity from decisions order by id desc limit 100")}
+
+
 def multi():
     db = RUNS / "multi" / "multi.sqlite"
     if not db.exists():
@@ -71,5 +79,5 @@ def multi():
 
 if __name__ == "__main__":
     data = {"updated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "wallet": 10000,
-            "bots": bots(), "portfolio": portfolio(), "daytrader": daytrader(), "multi": multi()}
+            "bots": bots(), "portfolio": portfolio(), "daytrader": daytrader(), "multi": multi(), "agent": agent()}
     Path(sys.argv[1]).write_text(json.dumps(data, separators=(",", ":"), default=str))

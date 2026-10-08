@@ -31,7 +31,7 @@ save() {
 
 prune() {  # drop run folders of strategies that were removed from the repo
   for d in runs/*/; do n=$(basename "$d")
-    case "$n" in portfolio|daytrader|multi|dashboard) continue;; esac
+    case "$n" in portfolio|daytrader|multi|agent|dashboard) continue;; esac
     [ -f "user_data/strategies/$n.py" ] || { rm -rf "$d"; echo "pruned $n"; }
   done
 }

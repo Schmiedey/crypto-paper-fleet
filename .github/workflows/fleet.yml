@@ -31,4 +31,6 @@ jobs:
       - name: Run fleet
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: scripts/ci_run.sh
