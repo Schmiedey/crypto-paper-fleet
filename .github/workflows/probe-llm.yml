@@ -9,3 +9,5 @@ jobs:
         run: |
           curl -s -o /tmp/m.json -w "groq models: %{http_code}\n" https://api.groq.com/openai/v1/models -H "Authorization: Bearer $GROQ_API_KEY"
           python3 -c "import json;print(sorted(m[\"id\"] for m in json.load(open(\"/tmp/m.json\"))[\"data\"]))"
+          curl -s https://api.groq.com/openai/v1/chat/completions -H "Authorization: Bearer $GROQ_API_KEY" -H "Content-Type: application/json" \
+            -d '{"model":"openai/gpt-oss-120b","temperature":0.3,"response_format":{"type":"json_object"},"messages":[{"role":"system","content":"Reply ONLY with a JSON object."},{"role":"user","content":"Give {\"regime\":\"neutral\",\"weights\":{\"BTC\":0.1}}"}]}' | head -c 700; echo

@@ -149,7 +149,7 @@ def ask(system: str, user: str) -> tuple[str, str, str]:
         get = lambda j: j["candidates"][0]["content"]["parts"][0]["text"]  # noqa: E731
         provider = "gemini"
     elif key := os.environ.get("GROQ_API_KEY"):
-        model = os.environ.get("AGENT_MODEL", "llama-3.3-70b-versatile")
+        model = os.environ.get("AGENT_MODEL", "openai/gpt-oss-120b")
         url = "https://api.groq.com/openai/v1/chat/completions"
         body = {"model": model, "temperature": 0.3, "response_format": {"type": "json_object"},
                 "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
